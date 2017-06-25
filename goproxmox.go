@@ -49,7 +49,8 @@ type Client struct {
 	// Control panel password
 	Password string
 
-	Ticket string
+	Ticket    string
+	CSRFToken string
 
 	// Services used for communicating with the API
 	Nodes NodesService
@@ -77,14 +78,14 @@ type ErrorResponse struct {
 }
 
 // NewClient returns a new proxmox API client.
-func NewClient(host, username, password string, ticket string) *Client {
+func NewClient(host, username, password, ticket, csrfToken string) *Client {
 
 	httpClient := http.DefaultClient
 
 	apiServerBaseUrl := fmt.Sprintf("%s%s", host, apiBasePath)
 	baseURL, _ := url.Parse(apiServerBaseUrl)
 
-	c := &Client{client: httpClient, BaseURL: baseURL, Ticket: ticket}
+	c := &Client{client: httpClient, BaseURL: baseURL, Ticket: ticket, CSRFToken: csrfToken}
 
 	log.Printf("[DEBUG] Base URL: %s\n", baseURL)
 
@@ -122,6 +123,9 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 	req.Header.Add("Accept", mediaType)
 
 	req.Header.Add("cookie", fmt.Sprintf("PVEAuthCookie=%s", c.Ticket)) // TODO: Make custom http client
+	if method != "GET" {
+		req.Header.Add("CSRFPreventionToken", c.CSRFToken)
+	}
 
 	return req, nil
 }
@@ -148,7 +152,6 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 			err = rerr
 		}
 	}()
-
 	err = CheckResponse(resp)
 	if err != nil {
 		return resp, err
