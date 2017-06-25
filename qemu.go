@@ -66,6 +66,7 @@ type vmStatusRoot struct {
 	VMStatus VMStatus `json:"data"`
 }
 
+// Virtual machine index (per node).
 func (s *QemuServiceOp) GetVMs(node string) ([]VM, error) {
 	path := fmt.Sprintf("nodes/%s/qemu", node)
 
@@ -82,6 +83,7 @@ func (s *QemuServiceOp) GetVMs(node string) ([]VM, error) {
 	return root.VMs, err
 }
 
+// Get virtual machine status.
 func (s *QemuServiceOp) GetVMCurrentStatus(node string, vmID string) (*VMStatus, error) {
 	path := fmt.Sprintf("nodes/%s/qemu/%s/status/current", node, vmID)
 
@@ -98,6 +100,7 @@ func (s *QemuServiceOp) GetVMCurrentStatus(node string, vmID string) (*VMStatus,
 	return &root.VMStatus, err
 }
 
+// Start virtual machine.
 func (s *QemuServiceOp) StartVM(node string, vmID string) error {
 	path := fmt.Sprintf("nodes/%s/qemu/%s/status/start", node, vmID)
 
@@ -109,6 +112,8 @@ func (s *QemuServiceOp) StartVM(node string, vmID string) error {
 	return err
 }
 
+// Stop virtual machine. The qemu process will exit immediately.
+// This is akin to pulling the power plug of a running computer and may damage the VM data.
 func (s *QemuServiceOp) StopVM(node string, vmID string) error {
 	path := fmt.Sprintf("nodes/%s/qemu/%s/status/stop", node, vmID)
 
@@ -120,6 +125,8 @@ func (s *QemuServiceOp) StopVM(node string, vmID string) error {
 	return err
 }
 
+// Shutdown virtual machine. This is similar to pressing the power button on a physical machine.
+// This will send an ACPI event for the guest OS, which should then proceed to a clean shutdown.
 func (s *QemuServiceOp) ShutdownVM(node string, vmID string) error {
 	path := fmt.Sprintf("nodes/%s/qemu/%s/status/shutdown", node, vmID)
 
@@ -131,6 +138,7 @@ func (s *QemuServiceOp) ShutdownVM(node string, vmID string) error {
 	return err
 }
 
+// Reset virtual machine.
 func (s *QemuServiceOp) ResetVM(node string, vmID string) error {
 	path := fmt.Sprintf("nodes/%s/qemu/%s/status/reset", node, vmID)
 
@@ -142,6 +150,7 @@ func (s *QemuServiceOp) ResetVM(node string, vmID string) error {
 	return err
 }
 
+// Suspend virtual machine.
 func (s *QemuServiceOp) SuspendVM(node string, vmID string) error {
 	path := fmt.Sprintf("nodes/%s/qemu/%s/status/suspend", node, vmID)
 
@@ -153,6 +162,7 @@ func (s *QemuServiceOp) SuspendVM(node string, vmID string) error {
 	return err
 }
 
+// Resume virtual machine.
 func (s *QemuServiceOp) ResumeVM(node string, vmID string) error {
 	path := fmt.Sprintf("nodes/%s/qemu/%s/status/resume", node, vmID)
 
