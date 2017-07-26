@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"os"
 
+	"crypto/tls"
+
 	"github.com/hashicorp/logutils"
 )
 
@@ -79,8 +81,10 @@ type ErrorResponse struct {
 
 // NewClient returns a new proxmox API client.
 func NewClient(host, username, password, ticket, csrfToken string) *Client {
-
-	httpClient := http.DefaultClient
+	transport := &http.Transport{
+		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+	}
+	httpClient := &http.Client{Transport: transport}
 
 	apiServerBaseUrl := fmt.Sprintf("%s%s", host, apiBasePath)
 	baseURL, _ := url.Parse(apiServerBaseUrl)
@@ -122,7 +126,7 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 	req.Header.Add("Content-Type", mediaType)
 	req.Header.Add("Accept", mediaType)
 
-	req.Header.Add("cookie", fmt.Sprintf("PVEAuthCookie=%s", c.Ticket)) // TODO: Make custom http client
+	req.Header.Add("Cookie", fmt.Sprintf("PVEAuthCookie=%s", c.Ticket)) // TODO: Make custom http client
 	if method != "GET" {
 		req.Header.Add("CSRFPreventionToken", c.CSRFToken)
 	}
