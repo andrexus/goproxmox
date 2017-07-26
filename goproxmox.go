@@ -13,6 +13,7 @@ import (
 
 	"crypto/tls"
 
+	"github.com/fatih/structs"
 	"github.com/hashicorp/logutils"
 )
 
@@ -110,26 +111,27 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 
 	u := c.BaseURL.ResolveReference(rel)
 
-	buf := new(bytes.Buffer)
+	urlValues := url.Values{}
 	if body != nil {
-		err = json.NewEncoder(buf).Encode(body)
-		if err != nil {
-			return nil, err
+		for k, v := range structs.Map(body) {
+			urlValues.Add(k, v.(string))
 		}
 	}
 
-	req, err := http.NewRequest(method, u.String(), buf)
+	req, err := http.NewRequest(method, u.String(), bytes.NewBufferString(urlValues.Encode()))
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Add("Content-Type", mediaType)
-	req.Header.Add("Accept", mediaType)
+	if method == "POST" || method == "PUT" {
+		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	}
 
-	req.Header.Add("Cookie", fmt.Sprintf("PVEAuthCookie=%s", c.Ticket)) // TODO: Make custom http client
 	if method != "GET" {
 		req.Header.Add("CSRFPreventionToken", c.CSRFToken)
 	}
+	req.Header.Add("Accept", mediaType)
+	req.Header.Add("Cookie", fmt.Sprintf("PVEAuthCookie=%s", c.Ticket)) // TODO: Make custom http client
 
 	return req, nil
 }
@@ -191,7 +193,7 @@ func CheckResponse(r *http.Response) error {
 		return nil
 	}
 
-	errorResponse := &ErrorResponse{Response: r}
+	errorResponse := &ErrorResponse{Response: r, ResultCode: r.StatusCode}
 	data, err := ioutil.ReadAll(r.Body)
 	if err == nil && len(data) > 0 {
 		err := json.Unmarshal(data, errorResponse)

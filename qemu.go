@@ -11,6 +11,8 @@ type QemuService interface {
 	ResetVM(node string, vmID string) error
 	SuspendVM(node string, vmID string) error
 	ResumeVM(node string, vmID string) error
+	CreateVM(node string, vmID string, options *VMCreateOptions) error
+	DeleteVM(node string, vmID string) error
 }
 
 type QemuServiceOp struct {
@@ -56,6 +58,11 @@ type VMStatus struct {
 	Uptime    int         `json:"uptime"`
 	Pid       int         `json:"pid"`
 	Mem       int         `json:"mem"`
+}
+
+type VMCreateOptions struct {
+	VMID string `structs:"vmid"`
+	Name string `structs:"name,omitempty"`
 }
 
 type vmsRoot struct {
@@ -167,6 +174,31 @@ func (s *QemuServiceOp) ResumeVM(node string, vmID string) error {
 	path := fmt.Sprintf("nodes/%s/qemu/%s/status/resume", node, vmID)
 
 	req, err := s.client.NewRequest("POST", path, nil)
+	if err != nil {
+		return err
+	}
+	_, err = s.client.Do(req, nil)
+	return err
+}
+
+// Create virtual machine.
+func (s *QemuServiceOp) CreateVM(node string, vmID string, options *VMCreateOptions) error {
+	path := fmt.Sprintf("nodes/%s/qemu", node)
+
+	options.VMID = vmID
+	req, err := s.client.NewRequest("POST", path, options)
+	if err != nil {
+		return err
+	}
+	_, err = s.client.Do(req, nil)
+	return err
+}
+
+// Create virtual machine.
+func (s *QemuServiceOp) DeleteVM(node string, vmID string) error {
+	path := fmt.Sprintf("nodes/%s/qemu/%s", node, vmID)
+
+	req, err := s.client.NewRequest("DELETE", path, nil)
 	if err != nil {
 		return err
 	}
