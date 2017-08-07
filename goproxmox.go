@@ -11,8 +11,9 @@ import (
 	"net/url"
 	"os"
 
-	"crypto/tls"
+	"context"
 
+	"github.com/andrexus/goproxmox/pveauth"
 	"github.com/fatih/structs"
 	"github.com/hashicorp/logutils"
 )
@@ -52,9 +53,6 @@ type Client struct {
 	// Control panel password
 	Password string
 
-	Ticket    string
-	CSRFToken string
-
 	// Services used for communicating with the API
 	Nodes NodesService
 	VMs   QemuService
@@ -81,16 +79,22 @@ type ErrorResponse struct {
 }
 
 // NewClient returns a new proxmox API client.
-func NewClient(host, username, password, ticket, csrfToken string) *Client {
-	transport := &http.Transport{
-		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+func NewClient(host, username, password string) *Client {
+	config := pveauth.Config{
+		Username:  username,
+		Password:  password,
+		TicketURL: fmt.Sprintf("%s%saccess/ticket", host, apiBasePath),
 	}
-	httpClient := &http.Client{Transport: transport}
+	ticket, err := config.PasswordCredentialsTicket(context.Background())
+	if err != nil {
+		panic(err)
+	}
+	httpClient := config.Client(context.Background(), ticket)
 
 	apiServerBaseUrl := fmt.Sprintf("%s%s", host, apiBasePath)
 	baseURL, _ := url.Parse(apiServerBaseUrl)
 
-	c := &Client{client: httpClient, BaseURL: baseURL, Ticket: ticket, CSRFToken: csrfToken}
+	c := &Client{client: httpClient, BaseURL: baseURL}
 
 	log.Printf("[DEBUG] Base URL: %s\n", baseURL)
 
@@ -127,11 +131,7 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 		req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	}
 
-	if method != "GET" {
-		req.Header.Add("CSRFPreventionToken", c.CSRFToken)
-	}
 	req.Header.Add("Accept", mediaType)
-	req.Header.Add("Cookie", fmt.Sprintf("PVEAuthCookie=%s", c.Ticket)) // TODO: Make custom http client
 
 	return req, nil
 }
