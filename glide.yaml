@@ -1,4 +1,4 @@
-package: ""
+package: github.com/andrexus/goproxmox
 import:
 - package: github.com/hashicorp/logutils
 - package: github.com/fatih/structs
