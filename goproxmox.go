@@ -65,16 +65,14 @@ type RequestCompletionCallback func(*http.Request, *http.Response)
 
 // An ErrorResponse reports the error caused by an API request
 type ErrorResponse struct {
-	Success bool
-
 	// HTTP response that caused this error
 	Response *http.Response
 
-	// Error message
-	Message string `json:"ResultMessage"`
+	// Errors map
+	Errors map[string]string `json:"errors"`
 
-	// ResultCode returned from the API
-	ResultCode int `json:"ResultCode"`
+	// ResponseCode returned from the API
+	ResponseCode int
 }
 
 // NewClient returns a new proxmox API client.
@@ -181,7 +179,11 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 }
 
 func (r *ErrorResponse) Error() string {
-	return fmt.Sprintf("%s. Result code: %d", r.Message, r.ResultCode)
+	errors := ""
+	for  key, value := range r.Errors {
+		errors += fmt.Sprintf("\t%s: %s\n", key, value)
+	}
+	return fmt.Sprintf("Respose code: %d\nErrors:\n%s", r.ResponseCode, errors)
 }
 
 // CheckResponse checks the API response for errors, and returns them if present. A response is considered an
@@ -192,8 +194,9 @@ func CheckResponse(r *http.Response) error {
 		return nil
 	}
 
-	errorResponse := &ErrorResponse{Response: r, ResultCode: r.StatusCode}
+	errorResponse := &ErrorResponse{Response: r, ResponseCode: r.StatusCode}
 	data, err := ioutil.ReadAll(r.Body)
+	log.Printf("[DEBUG] Check response: %s\n", string(data))
 	if err == nil && len(data) > 0 {
 		err := json.Unmarshal(data, errorResponse)
 		if err != nil {

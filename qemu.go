@@ -7,15 +7,15 @@ import (
 
 type QemuService interface {
 	GetVMs(node string) ([]VM, error)
-	GetVMCurrentStatus(node string, vmID string) (*VMStatus, error)
-	StartVM(node string, vmID string) error
-	StopVM(node string, vmID string) error
-	ShutdownVM(node string, vmID string) error
-	ResetVM(node string, vmID string) error
-	SuspendVM(node string, vmID string) error
-	ResumeVM(node string, vmID string) error
+	GetVMCurrentStatus(node string, vmID int) (*VMStatus, error)
+	StartVM(node string, vmID int) error
+	StopVM(node string, vmID int) error
+	ShutdownVM(node string, vmID int) error
+	ResetVM(node string, vmID int) error
+	SuspendVM(node string, vmID int) error
+	ResumeVM(node string, vmID int) error
 	CreateVM(node string, createRequest VMCreateRequest) error
-	DeleteVM(node string, vmID string) error
+	DeleteVM(node string, vmID int) error
 }
 
 type QemuServiceOp struct {
@@ -65,78 +65,89 @@ type VMStatus struct {
 
 type VMCreateRequest interface {
 	GetOptionsMap() map[string]string
-	SetACPI(value bool)
-	SetAgent(value bool)
-	SetArchive(value string)
-	SetArgs(value string)
-	SetAutostart(value bool)
-	SetBalloon(value int) error
-	SetBios(value string)
-	SetBoot(value string)
-	SetBootdisk(value string)
-	SetCdrom(value string)
+	SetACPI(bool)
+	SetQemuAgent(bool)
+	SetArchive(string)
+	SetArgs(string)
+	SetAutostart(bool)
+	SetBalloon(int) error
+	SetBios(Bios)
+	SetBootOrder(...BootDevice) error
+	SetBootDisk(string)
+	SetCdrom(string)
 	SetCores(cores int) error
-	SetCpu(value string)
-	SetCpulimit(value int)
-	SetCpuunits(value int)
-	SetDescription(value string)
-	SetForce(value bool)
-	SetFreeze(value bool)
-	SetHostpci(value string)
-	SetHotplug(value string)
-	SetHugepages(value string)
-	AddIDE(value string) error
-	SetKeyboard(value string)
-	SetKvm(value bool)
-	SetLocaltime(value bool)
-	SetLock(value string)
-	SetMachine(value string)
-	SetMemory(value int)
-	SetMigrateDowntime(value int)
-	SetMigrateSpeed(value int)
+	SetCpu(string)
+	SetCpulimit(int)
+	SetCpuunits(int)
+	SetDescription(string)
+	SetForce(bool)
+	SetFreeze(bool)
+	SetHostpci(string)
+	SetHotplug(string)
+	SetHugepages(string)
+	AddIDEDevice(int, string) error
+	SetKeyboard(string)
+	SetKVMHardwareVirtualization(bool)
+	SetLocaltime(bool)
+	SetLock(string)
+	SetMachine(string)
+	SetMemory(int) error
+	SetMigrateDowntime(int)
+	SetMigrateSpeed(int)
 	SetName(name string)
-	AddNet(value string)
-	SetNuma(value bool)
-	AddNuma(value string)
-	SetOnboot(value bool)
-	SetOstype(value string)
-	AddParallel(value string)
-	SetPool(value string)
-	SetProtection(value bool)
-	SetReboot(value bool)
-	AddSATA(value string)
-	AddSCSI(value string)
-	SetScsihw(value string)
-	AddSerial(value string)
-	SetShares(value int)
-	SetSmbios1(value string)
-	SetSmp(value int)
-	SetSockets(value int)
-	SetStartdate(value string)
-	SetStartup(value string)
-	SetStorage(value string)
-	SetTablet(value bool)
-	SetTdf(value bool)
-	SetTemplate(value bool)
-	SetUnique(value bool)
-	AddUnused(value string)
-	AddUSB(value string)
-	SetVcpus(value int)
-	SetVga(value string)
-	AddVirtio(value string)
-	SetVmID(vmID int)
-	SetWatchdog(value string)
+	AddNetworkDevice(int, string) error
+	SetNuma(bool)
+	AddNuma(string)
+	SetStartAtBoot(bool)
+	SetOSType(OSType)
+	AddParallel(string)
+	SetPool(string)
+	SetProtection(bool)
+	SetReboot(bool)
+	AddSATA(string)
+	AddSCSI(string)
+	SetSCSIControllerType(SCSIControllerType)
+	AddSerial(string)
+	SetShares(int)
+	SetSmbios1(string)
+	SetSmp(int)
+	SetSockets(int) error
+	SetStartdate(string)
+	SetStartup(string)
+	SetStorage(string)
+	SetTablet(bool)
+	SetTdf(bool)
+	SetTemplate(bool)
+	SetUnique(bool)
+	AddUnused(string)
+	AddUSB(string)
+	SetVcpus(int)
+	SetVga(string)
+	AddVirtio(string)
+	SetVmID(vmID int) error
+	SetWatchdog(string)
 }
 
 type vmCreateOptions struct {
 	optionsMap map[string]string
+	ideDevices map[string]string
 }
 
-func NewVMCreateRequest(vmID int) *vmCreateOptions {
-	optionsMap := map[string]string{
-		"vmid": strconv.Itoa(vmID),
+func NewVMCreateRequest(vmID int) (*vmCreateOptions, error) {
+	createOptions := &vmCreateOptions{
+		optionsMap: make(map[string]string),
 	}
-	return &vmCreateOptions{optionsMap: optionsMap}
+	if err := createOptions.SetVmID(vmID); err != nil {
+		return nil, err
+	}
+	return createOptions, nil
+}
+
+func boolToString(b bool) string {
+	if b {
+		return "1"
+	}
+	return "0"
 }
 
 func (c *vmCreateOptions) GetOptionsMap() map[string]string {
@@ -145,12 +156,12 @@ func (c *vmCreateOptions) GetOptionsMap() map[string]string {
 
 // Enable/disable ACPI.
 func (c *vmCreateOptions) SetACPI(value bool) {
-	c.optionsMap["acpi"] = strconv.FormatBool(value)
+	c.optionsMap["acpi"] = boolToString(value)
 }
 
 // Enable/disable Qemu GuestAgent.
-func (c *vmCreateOptions) SetAgent(value bool) {
-	c.optionsMap["agent"] = strconv.FormatBool(value)
+func (c *vmCreateOptions) SetQemuAgent(value bool) {
+	c.optionsMap["agent"] = boolToString(value)
 }
 
 // The backup file.
@@ -165,10 +176,10 @@ func (c *vmCreateOptions) SetArgs(value string) {
 
 // Automatic restart after crash
 func (c *vmCreateOptions) SetAutostart(value bool) {
-	c.optionsMap["autostart"] = strconv.FormatBool(value)
+	c.optionsMap["autostart"] = boolToString(value)
 }
 
-// (0 - N) Amount of target RAM for the VM in MB. Using zero disables the balloon driver.
+// Amount of target RAM for the VM in MB. Using zero disables the balloon driver.
 func (c *vmCreateOptions) SetBalloon(value int) error {
 	if value < 0 {
 		return NewArgError("balloon", "it can't be negative number")
@@ -177,18 +188,26 @@ func (c *vmCreateOptions) SetBalloon(value int) error {
 	return nil
 }
 
-// enum: seabios | ovmf. Select BIOS implementation.
-func (c *vmCreateOptions) SetBios(value string) {
-	c.optionsMap["bios"] = value
+// Select BIOS implementation.
+func (c *vmCreateOptions) SetBios(value Bios) {
+	c.optionsMap["bios"] = value.String()
 }
 
 // [acdn]{1,4} Boot on floppy (a), hard disk (c), CD-ROM (d), or network (n).
-func (c *vmCreateOptions) SetBoot(value string) {
+func (c *vmCreateOptions) SetBootOrder(values ...BootDevice) error {
+	value := ""
+	if len(values) > 4 {
+		return NewArgError("boot", "there are too many boot devices specified")
+	}
+	for _, bootDevice := range values {
+		value += bootDevice.String()
+	}
 	c.optionsMap["boot"] = value
+	return nil
 }
 
 // pve-qm-bootdisk Enable booting from specified disk.
-func (c *vmCreateOptions) SetBootdisk(value string) {
+func (c *vmCreateOptions) SetBootDisk(value string) {
 	c.optionsMap["bootdisk"] = value
 }
 
@@ -228,12 +247,12 @@ func (c *vmCreateOptions) SetDescription(value string) {
 
 // Allow to overwrite existing VM.
 func (c *vmCreateOptions) SetForce(value bool) {
-	c.optionsMap["force"] = strconv.FormatBool(value)
+	c.optionsMap["force"] = boolToString(value)
 }
 
 // Freeze CPU at startup (use 'c' monitor command to start execution).
 func (c *vmCreateOptions) SetFreeze(value bool) {
-	c.optionsMap["freeze"] = strconv.FormatBool(value)
+	c.optionsMap["freeze"] = boolToString(value)
 }
 
 // Map host PCI devices into guest. NOTE: This option allows direct access to host hardware. So it is no longer possible to migrate such machines - use with special care.
@@ -252,7 +271,18 @@ func (c *vmCreateOptions) SetHugepages(value string) {
 }
 
 // Use volume as IDE hard disk or CD-ROM
-func (c *vmCreateOptions) AddIDE(value string) error {
+func (c *vmCreateOptions) AddIDEDevice(number int, value string) error {
+	if number < 0 || number > 3 {
+		return NewArgError("ide", "it must be 0 to 3")
+	}
+
+	key := fmt.Sprintf("ide%d", number)
+	if _, ok := c.optionsMap[key]; ok {
+		return NewArgError("ide", fmt.Sprintf("IDE device %s already exists", key))
+	}
+
+	c.optionsMap[key] = value
+
 	return nil
 }
 
@@ -262,13 +292,13 @@ func (c *vmCreateOptions) SetKeyboard(value string) {
 }
 
 // Enable/disable KVM hardware virtualization.
-func (c *vmCreateOptions) SetKvm(value bool) {
-	c.optionsMap["kvm"] = strconv.FormatBool(value)
+func (c *vmCreateOptions) SetKVMHardwareVirtualization(value bool) {
+	c.optionsMap["kvm"] = boolToString(value)
 }
 
 // Set the real time clock to local time. This is enabled by default if ostype indicates a Microsoft OS.
 func (c *vmCreateOptions) SetLocaltime(value bool) {
-	c.optionsMap["localtime"] = strconv.FormatBool(value)
+	c.optionsMap["localtime"] = boolToString(value)
 }
 
 // enum: migrate |backup | snapshot | rollback. Lock/unlock the VM.
@@ -282,8 +312,12 @@ func (c *vmCreateOptions) SetMachine(value string) {
 }
 
 // (16 - N) Amount of RAM for the VM in MB. This is the maximum available memory when you use the balloon device.
-func (c *vmCreateOptions) SetMemory(value int) {
+func (c *vmCreateOptions) SetMemory(value int) error {
+	if value < 16 {
+		return NewArgError("memory", "it must be >= 16")
+	}
 	c.optionsMap["memory"] = strconv.Itoa(value)
+	return nil
 }
 
 // (0 - N) Set maximum tolerated downtime (in seconds) for migrations.
@@ -302,13 +336,19 @@ func (c *vmCreateOptions) SetName(name string) {
 }
 
 // Specify network devices.
-func (c *vmCreateOptions) AddNet(value string) {
-	c.optionsMap["net1"] = value
+func (c *vmCreateOptions) AddNetworkDevice(number int, value string) error {
+	key := fmt.Sprintf("net%d", number)
+	if _, ok := c.optionsMap[key]; ok {
+		return NewArgError("net", fmt.Sprintf("Network device %s already exists", key))
+	}
+
+	c.optionsMap[key] = value
+	return nil
 }
 
 // Enable/disable NUMA.
 func (c *vmCreateOptions) SetNuma(value bool) {
-	c.optionsMap["numa"] = strconv.FormatBool(value)
+	c.optionsMap["numa"] = boolToString(value)
 }
 
 // NUMA topology.
@@ -317,13 +357,13 @@ func (c *vmCreateOptions) AddNuma(value string) {
 }
 
 // Specifies whether a VM will be started during system bootup.
-func (c *vmCreateOptions) SetOnboot(value bool) {
-	c.optionsMap["onboot"] = strconv.FormatBool(value)
+func (c *vmCreateOptions) SetStartAtBoot(value bool) {
+	c.optionsMap["onboot"] = boolToString(value)
 }
 
-// enum: other | wxp | w2k | w2k3 | w2k8 | wvista | win7 | win8 | win10 | l24 | l26 | solaris. Specify guest operating system. This is used to enable special optimization/features for specific operating systems.
-func (c *vmCreateOptions) SetOstype(value string) {
-	c.optionsMap["ostype"] = value
+// Specify guest operating system. This is used to enable special optimization/features for specific operating systems.
+func (c *vmCreateOptions) SetOSType(value OSType) {
+	c.optionsMap["ostype"] = value.String()
 }
 
 // Map host parallel devices (n is 0 to 2). NOTE: This option allows direct access to host hardware. So it is no longer possible to migrate such machines - use with special care.
@@ -338,12 +378,12 @@ func (c *vmCreateOptions) SetPool(value string) {
 
 // Sets the protection flag of the VM. This will disable the remove VM and remove disk operations.
 func (c *vmCreateOptions) SetProtection(value bool) {
-	c.optionsMap["protection"] = strconv.FormatBool(value)
+	c.optionsMap["protection"] = boolToString(value)
 }
 
 // Allow reboot. If set to '0' the VM exit on reboot.
 func (c *vmCreateOptions) SetReboot(value bool) {
-	c.optionsMap["reboot"] = strconv.FormatBool(value)
+	c.optionsMap["reboot"] = boolToString(value)
 }
 
 // Use volume as SATA hard disk or CD-ROM (n is 0 to 5).
@@ -356,9 +396,9 @@ func (c *vmCreateOptions) AddSCSI(value string) {
 	c.optionsMap["scsi1"] = value
 }
 
-// enum: lsi |lsi53c810 | virtio-scsi-pci | virtio-scsi-single | megasas | pvscsi. SCSI controller model
-func (c *vmCreateOptions) SetScsihw(value string) {
-	c.optionsMap["scsihw"] = value
+// SCSI controller model
+func (c *vmCreateOptions) SetSCSIControllerType(value SCSIControllerType) {
+	c.optionsMap["scsihw"] = value.String()
 }
 
 // (/dev/.+|socket) Create a serial device inside the VM (n is 0 to 3), and pass through a host serial device (i.e. /dev/ttyS0), or create a unix socket on the host side (use 'qm terminal' to open a terminal connection). NOTE: If you pass through a host serial device, it is no longer possible to migrate such machines - use with special care.
@@ -376,14 +416,18 @@ func (c *vmCreateOptions) SetSmbios1(value string) {
 	c.optionsMap["smbios1"] = value
 }
 
-// Then umber of CPUs. Please use option -sockets instead.
+// The number of CPUs. Please use option -sockets instead.
 func (c *vmCreateOptions) SetSmp(value int) {
 	c.optionsMap["smp"] = strconv.Itoa(value)
 }
 
 // The number of CPU sockets.
-func (c *vmCreateOptions) SetSockets(value int) {
+func (c *vmCreateOptions) SetSockets(value int) error {
+	if value < 1 {
+		return NewArgError("sockets", "it must be > 0")
+	}
 	c.optionsMap["sockets"] = strconv.Itoa(value)
+	return nil
 }
 
 // (now |YYYY-MM-DD | YYYY-MM-DDTHH:MM:SS) Set the initial date of the real time clock. Valid format for date are: 'now' or '2006-06-17T16:01:21' or'2006-06-17'.
@@ -403,22 +447,22 @@ func (c *vmCreateOptions) SetStorage(value string) {
 
 // Enable/disable the USB tablet device. This device is usually needed to allow absolute mouse positioning with VNC. Else the mouse runs out of sync with normal VNC clients. If you're running lots of console-only guests on one host, you may consider disabling this to save some context switches. This is turned off by default if you use spice (-vga=qxl).
 func (c *vmCreateOptions) SetTablet(value bool) {
-	c.optionsMap["tablet"] = strconv.FormatBool(value)
+	c.optionsMap["tablet"] = boolToString(value)
 }
 
 // Enable/disable time drift fix.
 func (c *vmCreateOptions) SetTdf(value bool) {
-	c.optionsMap["tdf"] = strconv.FormatBool(value)
+	c.optionsMap["tdf"] = boolToString(value)
 }
 
 // Enable/disable Template.
 func (c *vmCreateOptions) SetTemplate(value bool) {
-	c.optionsMap["template"] = strconv.FormatBool(value)
+	c.optionsMap["template"] = boolToString(value)
 }
 
 // Assign a unique random ethernet address.
 func (c *vmCreateOptions) SetUnique(value bool) {
-	c.optionsMap["unique"] = strconv.FormatBool(value)
+	c.optionsMap["unique"] = boolToString(value)
 }
 
 // Reference to unused volumes. This is used internally, and should not be modified manually.
@@ -447,8 +491,12 @@ func (c *vmCreateOptions) AddVirtio(value string) {
 }
 
 // The (unique) ID of the VM.
-func (c *vmCreateOptions) SetVmID(vmID int) {
-	c.optionsMap["vmid"] = strconv.Itoa(vmID)
+func (c *vmCreateOptions) SetVmID(value int) error {
+	if value < 0 {
+		return NewArgError("vmid", "it can't be negative number")
+	}
+	c.optionsMap["vmid"] = strconv.Itoa(value)
+	return nil
 }
 
 // Create a virtual hardware watchdog device. Once enabled (by a guest action), the watchdog must be periodically polled by an agent inside the guest or else the watchdog will reset the guest(or execute the respective action specified)
@@ -482,8 +530,8 @@ func (s *QemuServiceOp) GetVMs(node string) ([]VM, error) {
 }
 
 // Get virtual machine status.
-func (s *QemuServiceOp) GetVMCurrentStatus(node string, vmID string) (*VMStatus, error) {
-	path := fmt.Sprintf("nodes/%s/qemu/%s/status/current", node, vmID)
+func (s *QemuServiceOp) GetVMCurrentStatus(node string, vmID int) (*VMStatus, error) {
+	path := fmt.Sprintf("nodes/%s/qemu/%d/status/current", node, vmID)
 
 	req, err := s.client.NewRequest("GET", path, nil)
 	if err != nil {
@@ -499,8 +547,8 @@ func (s *QemuServiceOp) GetVMCurrentStatus(node string, vmID string) (*VMStatus,
 }
 
 // Start virtual machine.
-func (s *QemuServiceOp) StartVM(node string, vmID string) error {
-	path := fmt.Sprintf("nodes/%s/qemu/%s/status/start", node, vmID)
+func (s *QemuServiceOp) StartVM(node string, vmID int) error {
+	path := fmt.Sprintf("nodes/%s/qemu/%d/status/start", node, vmID)
 
 	req, err := s.client.NewRequest("POST", path, nil)
 	if err != nil {
@@ -512,8 +560,8 @@ func (s *QemuServiceOp) StartVM(node string, vmID string) error {
 
 // Stop virtual machine. The qemu process will exit immediately.
 // This is akin to pulling the power plug of a running computer and may damage the VM data.
-func (s *QemuServiceOp) StopVM(node string, vmID string) error {
-	path := fmt.Sprintf("nodes/%s/qemu/%s/status/stop", node, vmID)
+func (s *QemuServiceOp) StopVM(node string, vmID int) error {
+	path := fmt.Sprintf("nodes/%s/qemu/%d/status/stop", node, vmID)
 
 	req, err := s.client.NewRequest("POST", path, nil)
 	if err != nil {
@@ -525,8 +573,8 @@ func (s *QemuServiceOp) StopVM(node string, vmID string) error {
 
 // Shutdown virtual machine. This is similar to pressing the power button on a physical machine.
 // This will send an ACPI event for the guest OS, which should then proceed to a clean shutdown.
-func (s *QemuServiceOp) ShutdownVM(node string, vmID string) error {
-	path := fmt.Sprintf("nodes/%s/qemu/%s/status/shutdown", node, vmID)
+func (s *QemuServiceOp) ShutdownVM(node string, vmID int) error {
+	path := fmt.Sprintf("nodes/%s/qemu/%d/status/shutdown", node, vmID)
 
 	req, err := s.client.NewRequest("POST", path, nil)
 	if err != nil {
@@ -537,8 +585,8 @@ func (s *QemuServiceOp) ShutdownVM(node string, vmID string) error {
 }
 
 // Reset virtual machine.
-func (s *QemuServiceOp) ResetVM(node string, vmID string) error {
-	path := fmt.Sprintf("nodes/%s/qemu/%s/status/reset", node, vmID)
+func (s *QemuServiceOp) ResetVM(node string, vmID int) error {
+	path := fmt.Sprintf("nodes/%s/qemu/%d/status/reset", node, vmID)
 
 	req, err := s.client.NewRequest("POST", path, nil)
 	if err != nil {
@@ -549,8 +597,8 @@ func (s *QemuServiceOp) ResetVM(node string, vmID string) error {
 }
 
 // Suspend virtual machine.
-func (s *QemuServiceOp) SuspendVM(node string, vmID string) error {
-	path := fmt.Sprintf("nodes/%s/qemu/%s/status/suspend", node, vmID)
+func (s *QemuServiceOp) SuspendVM(node string, vmID int) error {
+	path := fmt.Sprintf("nodes/%s/qemu/%d/status/suspend", node, vmID)
 
 	req, err := s.client.NewRequest("POST", path, nil)
 	if err != nil {
@@ -561,8 +609,8 @@ func (s *QemuServiceOp) SuspendVM(node string, vmID string) error {
 }
 
 // Resume virtual machine.
-func (s *QemuServiceOp) ResumeVM(node string, vmID string) error {
-	path := fmt.Sprintf("nodes/%s/qemu/%s/status/resume", node, vmID)
+func (s *QemuServiceOp) ResumeVM(node string, vmID int) error {
+	path := fmt.Sprintf("nodes/%s/qemu/%d/status/resume", node, vmID)
 
 	req, err := s.client.NewRequest("POST", path, nil)
 	if err != nil {
@@ -584,8 +632,8 @@ func (s *QemuServiceOp) CreateVM(node string, createRequest VMCreateRequest) err
 }
 
 // Create virtual machine.
-func (s *QemuServiceOp) DeleteVM(node string, vmID string) error {
-	path := fmt.Sprintf("nodes/%s/qemu/%s", node, vmID)
+func (s *QemuServiceOp) DeleteVM(node string, vmID int) error {
+	path := fmt.Sprintf("nodes/%s/qemu/%d", node, vmID)
 
 	req, err := s.client.NewRequest("DELETE", path, nil)
 	if err != nil {
