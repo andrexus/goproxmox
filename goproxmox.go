@@ -14,7 +14,6 @@ import (
 	"context"
 
 	"github.com/andrexus/goproxmox/pveauth"
-	"github.com/fatih/structs"
 	"github.com/hashicorp/logutils"
 )
 
@@ -107,7 +106,7 @@ func NewClient(host, username, password string) *Client {
 // NewRequest creates an API request. A relative URL can be provided in urlStr, which will be resolved to the
 // BaseURL of the Client. Relative URLS should always be specified without a preceding slash. If specified, the
 // value pointed to by body is JSON encoded and included in as the request body.
-func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Request, error) {
+func (c *Client) NewRequest(method, urlStr string, body map[string]string) (*http.Request, error) {
 	rel, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
@@ -117,8 +116,8 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 
 	urlValues := url.Values{}
 	if body != nil {
-		for k, v := range structs.Map(body) {
-			urlValues.Add(k, v.(string))
+		for k, v := range body {
+			urlValues.Add(k, v)
 		}
 	}
 

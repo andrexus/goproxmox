@@ -1,8 +1,0 @@
-hash: 1579ca103d2f8944ec3c73c327698b61df7318ed92f563f6f3c75f883905a420
-updated: 2017-07-26T23:53:19.517479886+02:00
-imports:
-- name: github.com/fatih/structs
-  version: a720dfa8df582c51dee1b36feabb906bde1588bd
-- name: github.com/hashicorp/logutils
-  version: 0dc08b1671f34c4250ce212759ebd880f743d883
-testImports: []

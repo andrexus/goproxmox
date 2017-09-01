@@ -1,5 +1,0 @@
-package: ""
-import:
-- package: github.com/hashicorp/logutils
-- package: github.com/fatih/structs
-  version: ^1.0.0
