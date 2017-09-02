@@ -14,7 +14,6 @@ import (
 	"context"
 
 	"github.com/andrexus/goproxmox/pveauth"
-	"github.com/fatih/structs"
 	"github.com/hashicorp/logutils"
 )
 
@@ -66,16 +65,14 @@ type RequestCompletionCallback func(*http.Request, *http.Response)
 
 // An ErrorResponse reports the error caused by an API request
 type ErrorResponse struct {
-	Success bool
-
 	// HTTP response that caused this error
 	Response *http.Response
 
-	// Error message
-	Message string `json:"ResultMessage"`
+	// Errors map
+	Errors map[string]string `json:"errors"`
 
-	// ResultCode returned from the API
-	ResultCode int `json:"ResultCode"`
+	// ResponseCode returned from the API
+	ResponseCode int
 }
 
 // NewClient returns a new proxmox API client.
@@ -107,7 +104,7 @@ func NewClient(host, username, password string) *Client {
 // NewRequest creates an API request. A relative URL can be provided in urlStr, which will be resolved to the
 // BaseURL of the Client. Relative URLS should always be specified without a preceding slash. If specified, the
 // value pointed to by body is JSON encoded and included in as the request body.
-func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Request, error) {
+func (c *Client) NewRequest(method, urlStr string, body map[string]string) (*http.Request, error) {
 	rel, err := url.Parse(urlStr)
 	if err != nil {
 		return nil, err
@@ -117,8 +114,8 @@ func (c *Client) NewRequest(method, urlStr string, body interface{}) (*http.Requ
 
 	urlValues := url.Values{}
 	if body != nil {
-		for k, v := range structs.Map(body) {
-			urlValues.Add(k, v.(string))
+		for k, v := range body {
+			urlValues.Add(k, v)
 		}
 	}
 
@@ -182,7 +179,11 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 }
 
 func (r *ErrorResponse) Error() string {
-	return fmt.Sprintf("%s. Result code: %d", r.Message, r.ResultCode)
+	errors := ""
+	for  key, value := range r.Errors {
+		errors += fmt.Sprintf("\t%s: %s\n", key, value)
+	}
+	return fmt.Sprintf("Respose code: %d\nErrors:\n%s", r.ResponseCode, errors)
 }
 
 // CheckResponse checks the API response for errors, and returns them if present. A response is considered an
@@ -193,8 +194,9 @@ func CheckResponse(r *http.Response) error {
 		return nil
 	}
 
-	errorResponse := &ErrorResponse{Response: r, ResultCode: r.StatusCode}
+	errorResponse := &ErrorResponse{Response: r, ResponseCode: r.StatusCode}
 	data, err := ioutil.ReadAll(r.Body)
+	log.Printf("[DEBUG] Check response: %s\n", string(data))
 	if err == nil && len(data) > 0 {
 		err := json.Unmarshal(data, errorResponse)
 		if err != nil {
