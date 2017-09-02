@@ -111,7 +111,7 @@ type VMCreateRequest interface {
 	SetMemoryShares(int) error
 	SetSMBIOS1(string)
 	SetSMP(int) error
-	SetCPUSockets(int) error
+	SetSockets(int) error
 	SetStartDate(string)
 	SetStartup(string)
 	SetStorage(string)
@@ -528,7 +528,7 @@ func (c *vmCreateOptions) SetSMP(value int) error {
 
 // The number of CPU sockets.
 // default = 1
-func (c *vmCreateOptions) SetCPUSockets(value int) error {
+func (c *vmCreateOptions) SetSockets(value int) error {
 	if value < 1 {
 		return NewArgError("sockets", "it must be > 0")
 	}
@@ -629,8 +629,8 @@ func (c *vmCreateOptions) AddVirtIODevice(number int, value string) error {
 
 // The (unique) ID of the VM.
 func (c *vmCreateOptions) SetVMID(value int) error {
-	if value < 0 {
-		return NewArgError("vmid", "it can't be a negative number")
+	if value < 100 {
+		return NewArgError("vmid", "it should be >= 100. IDs < 100 are reserved for internal purposes.")
 	}
 	c.optionsMap["vmid"] = strconv.Itoa(value)
 	return nil
