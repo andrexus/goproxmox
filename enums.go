@@ -288,3 +288,40 @@ var vgaTypeValues = [...]string{
 
 // String returns the name of the VGAType.
 func (m VGAType) String() string { return vgaTypeValues[m-1] }
+
+type NetworkCardModel int
+
+const (
+	NetworkCard_E1000 NetworkCardModel = 1 + iota
+	NetworkCard_E1000_82540em
+	NetworkCard_E1000_82544gc
+	NetworkCard_E1000_82545em
+	NetworkCard_I82551
+	NetworkCard_I82557b
+	NetworkCard_I82559er
+	NetworkCard_NE2K_ISA
+	NetworkCard_NE2K_PCI
+	NetworkCard_PCNET
+	NetworkCard_RTL8139
+	NetworkCard_VIRTIO
+	NetworkCard_VMXNET3
+)
+
+var networkCardModelValues = [...]string{
+	"e1000",
+	"e1000-82540em",
+	"e1000-82544gc",
+	"e1000-82545em",
+	"i82551",
+	"i82557b",
+	"i82559er",
+	"ne2k_isa",
+	"ne2k_pci",
+	"pcnet",
+	"rtl8139",
+	"virtio",
+	"vmxnet3",
+}
+
+// String returns the name of the NetworkCardModel.
+func (m NetworkCardModel) String() string { return networkCardModelValues[m-1] }

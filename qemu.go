@@ -95,7 +95,7 @@ type VMCreateRequest interface {
 	SetMigrateDowntime(int) error
 	SetMigrateSpeed(int) error
 	SetName(name string)
-	AddNetworkDevice(int, string) error
+	AddNetworkDevice(int, QMOption) error
 	SetNUMA(bool)
 	AddNUMA(string)
 	SetStartAtBoot(bool)
@@ -378,13 +378,13 @@ func (c *vmCreateOptions) SetName(name string) {
 }
 
 // Specify network devices.
-func (c *vmCreateOptions) AddNetworkDevice(number int, value string) error {
+func (c *vmCreateOptions) AddNetworkDevice(number int, value QMOption) error {
 	key := fmt.Sprintf("net%d", number)
 	if _, ok := c.optionsMap[key]; ok {
 		return NewArgError("net[n]", fmt.Sprintf("Network device %s already exists", key))
 	}
 
-	c.optionsMap[key] = value
+	c.optionsMap[key] = value.GetQMOptionValue()
 	return nil
 }
 
