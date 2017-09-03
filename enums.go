@@ -1,5 +1,7 @@
 package goproxmox
 
+import "fmt"
+
 type Bios int
 
 const (
@@ -14,6 +16,15 @@ var biosValues = [...]string{
 
 // String returns the name of the Bios.
 func (m Bios) String() string { return biosValues[m-1] }
+
+func BiosFromString(s string) (Bios, error) {
+	for i, v := range biosValues {
+		if s == v {
+			return Bios(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to Bios values", s)
+}
 
 type BootDevice int
 
