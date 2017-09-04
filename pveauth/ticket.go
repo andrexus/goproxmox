@@ -50,7 +50,7 @@ type Ticket struct {
 // returned by this package.
 func (t *Ticket) SetAuthHeader(r *http.Request) {
 	r.Header.Set("Cookie", fmt.Sprintf("PVEAuthCookie=%s", t.Ticket))
-	if r.Method == "POST" || r.Method == "PUT" {
+	if r.Method == "POST" || r.Method == "PUT" || r.Method == "DELETE" {
 		r.Header.Add("CSRFPreventionToken", t.CSRFPreventionToken)
 	}
 }
