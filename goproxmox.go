@@ -167,9 +167,9 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 				return nil, err
 			}
 		} else {
-			//bodyBytes, _ := ioutil.ReadAll(resp.Body)
-			//log.Printf("[DEBUG] Response: %s\n", string(bodyBytes))
-			err = json.NewDecoder(resp.Body).Decode(v)
+			body, _ := ioutil.ReadAll(resp.Body)
+			log.Printf("[DEBUG] Response: %s\n", string(body))
+			err = json.NewDecoder(bytes.NewReader(body)).Decode(v)
 			if err != nil {
 				return nil, err
 			}
