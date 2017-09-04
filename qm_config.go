@@ -1,8 +1,8 @@
 package goproxmox
 
 import (
-	"strconv"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -68,6 +68,7 @@ type VMConfig interface {
 	SetMigrateDowntime(int) error
 	SetMigrateSpeed(int) error
 	SetName(name string)
+	GetName() (string, bool)
 	AddNetworkDevice(int, *networkDevice) error
 	GetNetworkDevices() []networkDevice
 	SetNUMA(bool)
@@ -341,6 +342,13 @@ func (c *vmConfigMap) SetMigrateSpeed(value int) error {
 // Set a name for the VM. Only used on the configuration web interface.
 func (c *vmConfigMap) SetName(name string) {
 	c.configMap["name"] = name
+}
+
+func (c *vmConfigMap) GetName() (string, bool) {
+	if val, ok := c.configMap["name"]; ok {
+		return val, true
+	}
+	return "", false
 }
 
 // Specify network devices.
