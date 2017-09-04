@@ -1,6 +1,9 @@
 package goproxmox
 
-import "fmt"
+import (
+	"fmt"
+	"errors"
+)
 
 type QemuService interface {
 	GetVMList(node string) ([]VM, error)
@@ -201,9 +204,23 @@ func (s *QemuServiceOp) GetVMConfig(node string, vmID int) (VMConfig, error) {
 
 // Create virtual machine.
 func (s *QemuServiceOp) CreateVM(node string, vmID int, config VMConfig) error {
+	if config == nil {
+		config = NewVMConfig()
+	}
 	if err := config.SetVMID(vmID); err != nil {
 		return err
 	}
+
+	if vms, err := s.GetVMList(node); err != nil {
+		return err
+	} else {
+		for _, vm := range vms {
+			if vmID == vm.VMID {
+				return errors.New(fmt.Sprintf("VM with id %d already exists", vmID))
+			}
+		}
+	}
+
 	path := fmt.Sprintf("nodes/%s/qemu", node)
 	req, err := s.client.NewRequest("POST", path, config.GetOptionsMap())
 	if err != nil {
