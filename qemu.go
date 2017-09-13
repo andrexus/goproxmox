@@ -14,9 +14,9 @@ type QemuService interface {
 	ResetVM(node string, vmID int) error
 	SuspendVM(node string, vmID int) error
 	ResumeVM(node string, vmID int) error
-	GetVMConfig(node string, vmID int) (VMConfig, error)
-	CreateVM(node string, vmID int, config VMConfig) error
-	UpdateVM(node string, vmID int, config VMConfig, async bool) error
+	GetVMConfig(node string, vmID int) (*VMConfig, error)
+	CreateVM(node string, vmID int, config *VMConfig) error
+	UpdateVM(node string, vmID int, config *VMConfig, async bool) error
 	DeleteVM(node string, vmID int) error
 }
 
@@ -186,7 +186,7 @@ func (s *QemuServiceOp) ResumeVM(node string, vmID int) error {
 }
 
 // Get config for the virtual machine
-func (s *QemuServiceOp) GetVMConfig(node string, vmID int) (VMConfig, error) {
+func (s *QemuServiceOp) GetVMConfig(node string, vmID int) (*VMConfig, error) {
 	path := fmt.Sprintf("nodes/%s/qemu/%d/config", node, vmID)
 
 	req, err := s.client.NewRequest("GET", path, nil)
@@ -203,13 +203,11 @@ func (s *QemuServiceOp) GetVMConfig(node string, vmID int) (VMConfig, error) {
 }
 
 // Create virtual machine.
-func (s *QemuServiceOp) CreateVM(node string, vmID int, config VMConfig) error {
+func (s *QemuServiceOp) CreateVM(node string, vmID int, config *VMConfig) error {
 	if config == nil {
-		config = NewVMConfig()
+		config = &VMConfig{}
 	}
-	if err := config.SetVMID(vmID); err != nil {
-		return err
-	}
+	config.VMID = Int(vmID)
 
 	if vms, err := s.GetVMList(node); err != nil {
 		return err
@@ -222,7 +220,11 @@ func (s *QemuServiceOp) CreateVM(node string, vmID int, config VMConfig) error {
 	}
 
 	path := fmt.Sprintf("nodes/%s/qemu", node)
-	req, err := s.client.NewRequest("POST", path, config.GetOptionsMap())
+	optionsMap, err := config.GetOptionsMap()
+	if err != nil {
+		return err
+	}
+	req, err := s.client.NewRequest("POST", path, optionsMap)
 	if err != nil {
 		return err
 	}
@@ -231,13 +233,17 @@ func (s *QemuServiceOp) CreateVM(node string, vmID int, config VMConfig) error {
 }
 
 // Update virtual machine.
-func (s *QemuServiceOp) UpdateVM(node string, vmID int, config VMConfig, async bool) error {
+func (s *QemuServiceOp) UpdateVM(node string, vmID int, config *VMConfig, async bool) error {
 	path := fmt.Sprintf("nodes/%s/qemu/%d/config", node, vmID)
 	method := "PUT" // synchronous API
 	if async == true {
 		method = "POST" // asynchronous API
 	}
-	req, err := s.client.NewRequest(method, path, config.GetOptionsMap())
+	optionsMap, err := config.GetOptionsMap()
+	if err != nil {
+		return err
+	}
+	req, err := s.client.NewRequest(method, path, optionsMap)
 	if err != nil {
 		return err
 	}

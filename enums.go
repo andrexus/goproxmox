@@ -45,6 +45,15 @@ var bootDeviceValues = [...]string{
 // String returns the name of the BootDevice.
 func (m BootDevice) String() string { return bootDeviceValues[m-1] }
 
+func BootDeviceFromString(s string) (BootDevice, error) {
+	for i, v := range bootDeviceValues {
+		if s == v {
+			return BootDevice(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to BootDevice values", s)
+}
+
 type CPUType int
 
 const (
@@ -114,6 +123,15 @@ var cpuTypeValues = [...]string{
 // String returns the name of the CPUType.
 func (m CPUType) String() string { return cpuTypeValues[m-1] }
 
+func CPUTypeFromString(s string) (CPUType, error) {
+	for i, v := range bootDeviceValues {
+		if s == v {
+			return CPUType(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to CPUType values", s)
+}
+
 type HugePages int
 
 const (
@@ -130,6 +148,15 @@ var hugePagesValues = [...]string{
 
 // String returns the name of the HugePages.
 func (m HugePages) String() string { return hugePagesValues[m-1] }
+
+func HugePagesFromString(s string) (HugePages, error) {
+	for i, v := range bootDeviceValues {
+		if s == v {
+			return HugePages(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to HugePages values", s)
+}
 
 type KeyboardLayout int
 
@@ -192,6 +219,15 @@ var keyboardLayoutValues = [...]string{
 // String returns the name of the KeyboardLayout.
 func (m KeyboardLayout) String() string { return keyboardLayoutValues[m-1] }
 
+func KeyboardLayoutFromString(s string) (KeyboardLayout, error) {
+	for i, v := range bootDeviceValues {
+		if s == v {
+			return KeyboardLayout(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to KeyboardLayout values", s)
+}
+
 type Lock int
 
 const (
@@ -210,6 +246,15 @@ var lockValues = [...]string{
 
 // String returns the name of the Lock.
 func (m Lock) String() string { return lockValues[m-1] }
+
+func LockFromString(s string) (Lock, error) {
+	for i, v := range bootDeviceValues {
+		if s == v {
+			return Lock(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to Lock values", s)
+}
 
 type OSType int
 
@@ -244,6 +289,15 @@ var osTypeValues = [...]string{
 // String returns the name of the OSType.
 func (m OSType) String() string { return osTypeValues[m-1] }
 
+func OSTypeFromString(s string) (OSType, error) {
+	for i, v := range bootDeviceValues {
+		if s == v {
+			return OSType(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to OSType values", s)
+}
+
 type SCSIControllerType int
 
 const (
@@ -266,6 +320,15 @@ var scsiControllerTypeValues = [...]string{
 
 // String returns the name of the SCSIControllerType.
 func (m SCSIControllerType) String() string { return scsiControllerTypeValues[m-1] }
+
+func SCSIControllerTypeFromString(s string) (SCSIControllerType, error) {
+	for i, v := range bootDeviceValues {
+		if s == v {
+			return SCSIControllerType(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to SCSIControllerType values", s)
+}
 
 type VGAType int
 
@@ -299,6 +362,15 @@ var vgaTypeValues = [...]string{
 
 // String returns the name of the VGAType.
 func (m VGAType) String() string { return vgaTypeValues[m-1] }
+
+func VGATypeFromString(s string) (VGAType, error) {
+	for i, v := range bootDeviceValues {
+		if s == v {
+			return VGAType(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to VGAType values", s)
+}
 
 type NetworkCardModel int
 
