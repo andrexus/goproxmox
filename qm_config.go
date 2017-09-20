@@ -1,9 +1,12 @@
 package goproxmox
 
 import (
+	"errors"
 	"fmt"
-	"strconv"
+	"reflect"
 	"regexp"
+	"strconv"
+	"log"
 )
 
 const (
@@ -69,8 +72,70 @@ const (
 	parameterWatchdog                  = "watchdog"
 )
 
-type VMConfig struct {
+var parameterMapping = map[*regexp.Regexp]string{
+	regexp.MustCompile(parameterACPI):                      "ACPI",
+	regexp.MustCompile(parameterQemuAgent):                 "QemuAgent",
+	regexp.MustCompile(parameterArchive):                   "Archive",
+	regexp.MustCompile(parameterArgs):                      "Args",
+	regexp.MustCompile(parameterAutoStart):                 "AutoStart",
+	regexp.MustCompile(parameterBalloon):                   "Balloon",
+	regexp.MustCompile(parameterBios):                      "Bios",
+	regexp.MustCompile(parameterBootOrder):                 "BootOrder",
+	regexp.MustCompile(parameterBootDisk):                  "BootDisk",
+	regexp.MustCompile(parameterCDROM):                     "CDROM",
+	regexp.MustCompile(parameterCores):                     "Cores",
+	regexp.MustCompile(parameterCPU):                       "CPU",
+	regexp.MustCompile(parameterCPULimit):                  "CPULimit",
+	regexp.MustCompile(parameterCPUUnits):                  "CPUUnits",
+	regexp.MustCompile(parameterDescription):               "Description",
+	regexp.MustCompile(parameterForce):                     "Force",
+	regexp.MustCompile(parameterFreeze):                    "Freeze",
+	regexp.MustCompile(parameterHostPCI):                   "HostPCI",
+	regexp.MustCompile(parameterHotPlug):                   "HotPlug",
+	regexp.MustCompile(parameterHugePages):                 "HugePages",
+	regexp.MustCompile(`ide(\d+)`):                         "IDEDevices",
+	regexp.MustCompile(parameterKeyboardLayout):            "KeyboardLayout",
+	regexp.MustCompile(parameterKVMHardwareVirtualization): "KVMHardwareVirtualization",
+	regexp.MustCompile(parameterLocalTime):                 "LocalTime",
+	regexp.MustCompile(parameterLock):                      "Lock",
+	regexp.MustCompile(parameterMachineType):               "MachineType",
+	regexp.MustCompile(parameterMemory):                    "Memory",
+	regexp.MustCompile(parameterMigrateDowntime):           "MigrateDowntime",
+	regexp.MustCompile(parameterMigrateSpeed):              "MigrateSpeed",
+	regexp.MustCompile(parameterName):                      "Name",
+	regexp.MustCompile(`net(\d+)`):                         "NetworkDevices",
+	regexp.MustCompile(parameterNUMA):                      "NUMA",
+	regexp.MustCompile(`numa(\d+)`):                        "NUMATopologies",
+	regexp.MustCompile(parameterStartAtBoot):               "StartAtBoot",
+	regexp.MustCompile(parameterOSType):                    "OSType",
+	regexp.MustCompile(`parallel(\d+)`):                    "ParallelDevices",
+	regexp.MustCompile(parameterPool):                      "Pool",
+	regexp.MustCompile(parameterProtection):                "Protection",
+	regexp.MustCompile(parameterReboot):                    "Reboot",
+	regexp.MustCompile(`sata(\d+)`):                        "SATADevices",
+	regexp.MustCompile(`scsi(\d+)`):                        "SCSIDevices",
+	regexp.MustCompile(parameterSCSIControllerType):        "SCSIControllerType",
+	regexp.MustCompile(`serial(\d+)`):                      "SerialDevices",
+	regexp.MustCompile(parameterMemoryShares):              "MemoryShares",
+	regexp.MustCompile(parameterSMBIOS1):                   "SMBIOS1",
+	regexp.MustCompile(parameterSMP):                       "SMP",
+	regexp.MustCompile(parameterSockets):                   "Sockets",
+	regexp.MustCompile(parameterStartDate):                 "StartDate",
+	regexp.MustCompile(parameterStartup):                   "Startup",
+	regexp.MustCompile(parameterStorage):                   "Storage",
+	regexp.MustCompile(parameterTablet):                    "Tablet",
+	regexp.MustCompile(parameterTDF):                       "TDF",
+	regexp.MustCompile(parameterTemplate):                  "Template",
+	regexp.MustCompile(parameterUnique):                    "Unique",
+	regexp.MustCompile(`usb(\d+)`):                         "USBDevices",
+	regexp.MustCompile(parameterVCPUs):                     "VCPUs",
+	regexp.MustCompile(parameterVGA):                       "VGA",
+	regexp.MustCompile(`virtio(\d+)`):                      "VirtIODevices",
+	regexp.MustCompile(parameterVMID):                      "VMID",
+	regexp.MustCompile(parameterWatchdog):                  "Watchdog",
+}
 
+type VMConfig struct {
 	// Enable/disable ACPI.
 	// default = 1
 	ACPI *bool
@@ -225,7 +290,7 @@ type VMConfig struct {
 
 	//
 	// Specify network devices.
-	NetworkDevices map[int]*networkDevice
+	NetworkDevices map[int]*NetworkDevice
 
 	//
 	// Enable/disable NUMA.
@@ -365,7 +430,7 @@ type VMConfig struct {
 
 	//
 	// Use volume as VirtIO hard disk (n is 0 to 15).
-	VirtIODevices map[int]QMOption
+	VirtIODevices map[int]*VirtIODevice
 
 	//
 	// The (unique) ID of the VM.
@@ -380,221 +445,133 @@ type VMConfig struct {
 
 func NewVMConfigFromMap(data map[string]interface{}) *VMConfig {
 	config := new(VMConfig)
-	if val, ok := data[parameterACPI]; ok {
-		config.ACPI = Bool(intToBool(val.(int)))
-	}
-	if val, ok := data[parameterQemuAgent]; ok {
-		config.QemuAgent = Bool(intToBool(val.(int)))
-	}
-	if val, ok := data[parameterArchive]; ok {
-		config.Archive = String(val.(string))
-	}
-	if val, ok := data[parameterArgs]; ok {
-		config.Args = String(val.(string))
-	}
-	if val, ok := data[parameterAutoStart]; ok {
-		config.AutoStart = Bool(intToBool(val.(int)))
-	}
-	if val, ok := data[parameterBalloon]; ok {
-		config.Balloon = Int(val.(int))
-	}
-	if val, ok := data[parameterBios]; ok {
-		v, err := BiosFromString(val.(string))
-		if err == nil {
-			config.Bios = &v
-		}
-	}
-	//if val, ok := data[parameterBootOrder]; ok {
-	//	config.BootOrder = Bool(intToBool(val.(int)))
-	//}
-	if val, ok := data[parameterBootDisk]; ok {
-		config.BootDisk = String(val.(string))
-	}
-	if val, ok := data[parameterCDROM]; ok {
-		config.CDROM = String(val.(string))
-	}
-	if val, ok := data[parameterCores]; ok {
-		config.Cores = Int(int(val.(float64)))
-	}
-	if val, ok := data[parameterCPU]; ok {
-		v, err := CPUTypeFromString(val.(string))
-		if err == nil {
-			config.CPU = &v
-		}
-	}
-	if val, ok := data[parameterCPULimit]; ok {
-		config.CPULimit = Int(val.(int))
-	}
-	if val, ok := data[parameterCPUUnits]; ok {
-		config.CPUUnits = Int(val.(int))
-	}
-	if val, ok := data[parameterDescription]; ok {
-		config.Description = String(val.(string))
-	}
-	if val, ok := data[parameterForce]; ok {
-		config.Force = Bool(intToBool(val.(int)))
-	}
-	if val, ok := data[parameterFreeze]; ok {
-		config.Freeze = Bool(intToBool(val.(int)))
-	}
-	if val, ok := data[parameterHostPCI]; ok {
-		config.HostPCI = String(val.(string))
-	}
-	if val, ok := data[parameterHotPlug]; ok {
-		config.HotPlug = String(val.(string))
-	}
-	if val, ok := data[parameterHugePages]; ok {
-		v, err := HugePagesFromString(val.(string))
-		if err == nil {
-			config.HugePages = &v
-		}
-	}
-	//if val, ok := data[parameterIDEDevices]; ok {
-	//	config.IDEDevices = String(val.(QMOption))
-	//}
-	if val, ok := data[parameterKeyboardLayout]; ok {
-		v, err := KeyboardLayoutFromString(val.(string))
-		if err == nil {
-			config.KeyboardLayout = &v
-		}
-	}
-	if val, ok := data[parameterKVMHardwareVirtualization]; ok {
-		config.KVMHardwareVirtualization = Bool(intToBool(val.(int)))
-	}
-	if val, ok := data[parameterLocalTime]; ok {
-		config.LocalTime = Bool(intToBool(val.(int)))
-	}
-	if val, ok := data[parameterLock]; ok {
-		v, err := LockFromString(val.(string))
-		if err == nil {
-			config.Lock = &v
-		}
-	}
-	if val, ok := data[parameterMachineType]; ok {
-		config.MachineType = String(val.(string))
-	}
-	if val, ok := data[parameterMemory]; ok {
-		config.Memory = Int(int(val.(float64)))
-	}
-	if val, ok := data[parameterMigrateDowntime]; ok {
-		config.MigrateDowntime = Int(val.(int))
-	}
-	if val, ok := data[parameterMigrateSpeed]; ok {
-		config.MigrateSpeed = Int(val.(int))
-	}
-	if val, ok := data[parameterName]; ok {
-		config.Name = String(val.(string))
-	}
-
-	var netRegexp = regexp.MustCompile(`net(\d+)`)
 	for k, v := range data {
-		matchResults := netRegexp.FindStringSubmatch(k)
-		if len(matchResults) == 2 {
+		fieldName, matchResults, err := findFieldName(k)
+		if err != nil {
+			continue
+		}
+		switch fieldName {
+		case "ACPI":
+			config.ACPI = Bool(intToBool(int(v.(float64))))
+		case "QemuAgent":
+			config.QemuAgent = Bool(intToBool(int(v.(float64))))
+		case "AutoStart":
+			config.AutoStart = Bool(intToBool(int(v.(float64))))
+		case "Bios":
+			v, err := BiosFromString(v.(string))
+			if err == nil {
+				config.Bios = &v
+			}
+		case "BootOrder":
+			log.Printf("[DEBUG] Field %s is not supported yet", fieldName)
+		case "CPU":
+			v, err := CPUTypeFromString(v.(string))
+			if err == nil {
+				config.CPU = &v
+			}
+		case "Force":
+			config.Force = Bool(intToBool(int(v.(float64))))
+		case "Freeze":
+			config.Freeze = Bool(intToBool(int(v.(float64))))
+		case "HugePages":
+			v, err := HugePagesFromString(v.(string))
+			if err == nil {
+				config.HugePages = &v
+			}
+		case "IDEDevices":
+			log.Printf("[DEBUG] Field %s is not supported yet", fieldName)
+		case "KeyboardLayout":
+			v, err := KeyboardLayoutFromString(v.(string))
+			if err == nil {
+				config.KeyboardLayout = &v
+			}
+		case "KVMHardwareVirtualization":
+			config.KVMHardwareVirtualization = Bool(intToBool(int(v.(float64))))
+		case "LocalTime":
+			config.LocalTime = Bool(intToBool(int(v.(float64))))
+		case "Lock":
+			v, err := LockFromString(v.(string))
+			if err == nil {
+				config.Lock = &v
+			}
+		case "NetworkDevices":
 			number, _ := strconv.Atoi(matchResults[1])
 			config.AddNetworkDevice(number, NewNetworkDeviceFromString(v.(string)))
+		case "NUMA":
+			config.NUMA = Bool(intToBool(int(v.(float64))))
+		case "NUMATopologies":
+			log.Printf("[DEBUG] Field %s is not supported yet", fieldName)
+		case "StartAtBoot":
+			config.StartAtBoot = Bool(intToBool(int(v.(float64))))
+		case "ParallelDevices":
+			log.Printf("[DEBUG] Field %s is not supported yet", fieldName)
+		case "OSType":
+			v, err := OSTypeFromString(v.(string))
+			if err == nil {
+				config.OSType = &v
+			}
+		case "Protection":
+			config.Protection = Bool(intToBool(int(v.(float64))))
+		case "Reboot":
+			config.Reboot = Bool(intToBool(int(v.(float64))))
+		case "SATADevices":
+			log.Printf("[DEBUG] Field %s is not supported yet", fieldName)
+		case "SCSIDevices":
+			log.Printf("[DEBUG] Field %s is not supported yet", fieldName)
+		case "SCSIControllerType":
+			v, err := SCSIControllerTypeFromString(v.(string))
+			if err == nil {
+				config.SCSIControllerType = &v
+			}
+		case "SerialDevices":
+			log.Printf("[DEBUG] Field %s is not supported yet", fieldName)
+		case "Tablet":
+			config.Tablet = Bool(intToBool(int(v.(float64))))
+		case "TDF":
+			config.TDF = Bool(intToBool(int(v.(float64))))
+		case "Template":
+			config.Template = Bool(intToBool(int(v.(float64))))
+		case "Unique":
+			config.Unique = Bool(intToBool(int(v.(float64))))
+		case "USBDevices":
+			log.Printf("[DEBUG] Field %s is not supported yet", fieldName)
+		case "VGAType":
+			v, err := VGATypeFromString(v.(string))
+			if err == nil {
+				config.VGAType = &v
+			}
+		case "VirtIODevices":
+			number, _ := strconv.Atoi(matchResults[1])
+			config.AddVirtIODevice(number, NewVirtIODeviceFromString(v.(string)))
+		default:
+			s := reflect.Indirect(reflect.ValueOf(config))
+			field := s.FieldByName(fieldName)
+			log.Printf("[DEBUG] Field %s: %v\n", fieldName, v)
+			switch v.(type) {
+			case string:
+				val := v.(string)
+				field.Set(reflect.ValueOf(&val))
+			case float64:
+				val := int(v.(float64))
+				field.Set(reflect.ValueOf(&val))
+			default:
+				log.Printf("[DEBUG] Field %s: %v\n", fieldName, v)
+			}
 		}
-	}
-	//if val, ok := data[parameterNetworkDevices]; ok {
-	//	config.NetworkDevices = Bool(intToBool(val.(int)))
-	//}
-	if val, ok := data[parameterNUMA]; ok {
-		config.NUMA = Bool(intToBool(int(val.(float64))))
-	}
-	//if val, ok := data[parameterNUMATopologies]; ok {
-	//	config.NUMATopologies = Bool(intToBool(val.(int)))
-	//}
-	if val, ok := data[parameterStartAtBoot]; ok {
-		config.StartAtBoot = Bool(intToBool(int(val.(float64))))
-	}
-	if val, ok := data[parameterOSType]; ok {
-		v, err := OSTypeFromString(val.(string))
-		if err == nil {
-			config.OSType = &v
-		}
-	}
-	//if val, ok := data[parameterParallelDevices]; ok {
-	//	config.ParallelDevices = Bool(intToBool(val.(int)))
-	//}
-	if val, ok := data[parameterPool]; ok {
-		config.Pool = String(val.(string))
-	}
-	if val, ok := data[parameterProtection]; ok {
-		config.Protection = Bool(intToBool(val.(int)))
-	}
-	if val, ok := data[parameterReboot]; ok {
-		config.Reboot = Bool(intToBool(val.(int)))
-	}
-	//if val, ok := data[parameterSATADevices]; ok {
-	//	config.SATADevices = Bool(intToBool(val.(int)))
-	//}
-	//if val, ok := data[parameterSCSIDevices]; ok {
-	//	config.SCSIDevices = Bool(intToBool(val.(int)))
-	//}
-	if val, ok := data[parameterSCSIControllerType]; ok {
-		v, err := SCSIControllerTypeFromString(val.(string))
-		if err == nil {
-			config.SCSIControllerType = &v
-		}
-	}
-	//if val, ok := data[parameterSerialDevices]; ok {
-	//	config.SerialDevices = Bool(intToBool(val.(int)))
-	//}
-	if val, ok := data[parameterMemoryShares]; ok {
-		config.MemoryShares = Int(val.(int))
-	}
-	if val, ok := data[parameterSMBIOS1]; ok {
-		config.SMBIOS1 = String(val.(string))
-	}
-	if val, ok := data[parameterSMP]; ok {
-		config.SMP = Int(val.(int))
-	}
-	if val, ok := data[parameterSockets]; ok {
-		config.Sockets = Int(int(val.(float64)))
-	}
-	if val, ok := data[parameterStartDate]; ok {
-		config.StartDate = String(val.(string))
-	}
-	if val, ok := data[parameterStartup]; ok {
-		config.Startup = String(val.(string))
-	}
-	if val, ok := data[parameterStorage]; ok {
-		config.Storage = String(val.(string))
-	}
-	if val, ok := data[parameterTablet]; ok {
-		config.Tablet = Bool(intToBool(int(val.(float64))))
-	}
-	if val, ok := data[parameterTDF]; ok {
-		config.TDF = Bool(intToBool(val.(int)))
-	}
-	if val, ok := data[parameterTemplate]; ok {
-		config.Template = Bool(intToBool(val.(int)))
-	}
-	if val, ok := data[parameterUnique]; ok {
-		config.Unique = Bool(intToBool(val.(int)))
-	}
-	//if val, ok := data[parameterUSBDevices]; ok {
-	//	config.USBDevices = Bool(intToBool(val.(int)))
-	//}
-	if val, ok := data[parameterVCPUs]; ok {
-		config.VCPUs = Int(val.(int))
-	}
-	if val, ok := data[parameterVGA]; ok {
-		v, err := VGATypeFromString(val.(string))
-		if err == nil {
-			config.VGAType = &v
-		}
-	}
-	//if val, ok := data[parameterVirtIODevices]; ok {
-	//	config.VirtIODevices = Bool(intToBool(val.(int)))
-	//}
-	if val, ok := data[parameterVMID]; ok {
-		config.VMID = Int(val.(int))
-	}
-	if val, ok := data[parameterWatchdog]; ok {
-		config.Watchdog = String(val.(string))
 	}
 
 	return config
+}
+
+func findFieldName(parameter string) (string, []string, error) {
+	for parameterRegexp, fieldName := range parameterMapping {
+		matchResults := parameterRegexp.FindStringSubmatch(parameter)
+		//matches := parameterRegexp.MatchString(parameter)
+		if len(matchResults) > 0 {
+			return fieldName, matchResults, nil
+		}
+	}
+	return "", nil, errors.New("Can't find fieldName for parameter " + parameter)
 }
 
 func (c *VMConfig) AddIDEDevice(number int, value QMOption) {
@@ -604,9 +581,9 @@ func (c *VMConfig) AddIDEDevice(number int, value QMOption) {
 	c.IDEDevices[number] = value
 }
 
-func (c *VMConfig) AddNetworkDevice(number int, value *networkDevice) {
+func (c *VMConfig) AddNetworkDevice(number int, value *NetworkDevice) {
 	if c.NetworkDevices == nil {
-		c.NetworkDevices = make(map[int]*networkDevice)
+		c.NetworkDevices = make(map[int]*NetworkDevice)
 	}
 	c.NetworkDevices[number] = value
 }
@@ -653,9 +630,9 @@ func (c *VMConfig) AddUSBDevice(number int, value QMOption) {
 	c.USBDevices[number] = value
 }
 
-func (c *VMConfig) AddVirtIODevice(number int, value QMOption) {
+func (c *VMConfig) AddVirtIODevice(number int, value *VirtIODevice) {
 	if c.VirtIODevices == nil {
-		c.VirtIODevices = make(map[int]QMOption)
+		c.VirtIODevices = make(map[int]*VirtIODevice)
 	}
 	c.VirtIODevices[number] = value
 }
