@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	libraryVersion  = "0.1.1"
+	libraryVersion  = "0.1.2"
 	logLevelEnvName = "GOPROXMOX_LOGLEVEL"
 	apiBasePath     = "/api2/json/"
 	mediaType       = "application/json"
