@@ -10,6 +10,14 @@ func boolToString(b bool) string {
 	return "0"
 }
 
+// stringToBool returns true for "1" and false everything else
+func stringToBool(s string) bool {
+	if s == "1" {
+		return true
+	}
+	return false
+}
+
 // intToBool returns true for 1, false for 0 and false for everything else
 func intToBool(i int) bool {
 	if i == 1 {
