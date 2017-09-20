@@ -408,3 +408,46 @@ var networkCardModelValues = [...]string{
 
 // String returns the name of the NetworkCardModel.
 func (m NetworkCardModel) String() string { return networkCardModelValues[m-1] }
+
+func NetworkCardModelFromString(s string) (NetworkCardModel, error) {
+	for i, v := range networkCardModelValues {
+		if s == v {
+			return NetworkCardModel(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to NetworkCardModel values", s)
+}
+
+type VolumeFormat int
+
+const (
+	VolumeFormat_CLOOP VolumeFormat = 1 + iota
+	VolumeFormat_COW
+	VolumeFormat_QCOW
+	VolumeFormat_QCOW2
+	VolumeFormat_QED
+	VolumeFormat_RAW
+	VolumeFormat_VMDK
+)
+
+var volumeFormatValues = [...]string{
+	"cloop",
+	"cow",
+	"qcow",
+	"qcow2",
+	"qed",
+	"raw",
+	"vmdk",
+}
+
+// String returns the name of the VolumeFormat.
+func (m VolumeFormat) String() string { return volumeFormatValues[m-1] }
+
+func VolumeFormatFromString(s string) (VolumeFormat, error) {
+	for i, v := range volumeFormatValues {
+		if s == v {
+			return VolumeFormat(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to VolumeFormat values", s)
+}
