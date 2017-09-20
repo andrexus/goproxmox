@@ -50,6 +50,7 @@ func ContextClient(ctx context.Context) (*http.Client, error) {
 	}
 	transport := &http.Transport{
 		TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 
 	return &http.Client{Transport: transport}, nil
