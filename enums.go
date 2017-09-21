@@ -451,3 +451,27 @@ func VolumeFormatFromString(s string) (VolumeFormat, error) {
 	}
 	return 0, fmt.Errorf("%s does not belong to VolumeFormat values", s)
 }
+
+type MediaType int
+
+const (
+	MediaType_CDROM MediaType = 1 + iota
+	MediaType_DISK
+)
+
+var mediaTypeValues = [...]string{
+	"cdrom",
+	"disk",
+}
+
+// String returns the name of the MediaType.
+func (m MediaType) String() string { return mediaTypeValues[m-1] }
+
+func MediaTypeFromString(s string) (MediaType, error) {
+	for i, v := range mediaTypeValues {
+		if s == v {
+			return MediaType(i + 1), nil
+		}
+	}
+	return 0, fmt.Errorf("%s does not belong to MediaType values", s)
+}
