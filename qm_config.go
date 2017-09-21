@@ -244,7 +244,7 @@ type VMConfig struct {
 
 	//
 	// Use volume as IDE hard disk or CD-ROM
-	IDEDevices map[int]QMOption
+	IDEDevices map[int]*IDEDevice
 
 	//
 	// Keyboard layout for vnc server. Default is read from the '/etc/pve/datacenter.conf' configuration file.
@@ -479,7 +479,8 @@ func NewVMConfigFromMap(data map[string]interface{}) *VMConfig {
 				config.HugePages = &v
 			}
 		case "IDEDevices":
-			log.Printf("[DEBUG] Field %s is not supported yet", fieldName)
+			number, _ := strconv.Atoi(matchResults[1])
+			config.AddIDEDevice(number, NewIDEDeviceFromString(v.(string)))
 		case "KeyboardLayout":
 			v, err := KeyboardLayoutFromString(v.(string))
 			if err == nil {
@@ -574,9 +575,9 @@ func findFieldName(parameter string) (string, []string, error) {
 	return "", nil, errors.New("Can't find fieldName for parameter " + parameter)
 }
 
-func (c *VMConfig) AddIDEDevice(number int, value QMOption) {
+func (c *VMConfig) AddIDEDevice(number int, value *IDEDevice) {
 	if c.IDEDevices == nil {
-		c.IDEDevices = make(map[int]QMOption)
+		c.IDEDevices = make(map[int]*IDEDevice)
 	}
 	c.IDEDevices[number] = value
 }

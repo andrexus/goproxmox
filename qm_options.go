@@ -187,3 +187,48 @@ func (c *VirtIODevice) GetQMOptionValue() string {
 	}
 	return strings.Join(v, ",")
 }
+
+// IDE device
+type IDEDevice struct {
+	File  *string
+	Media *MediaType
+	Size  *string
+}
+
+func NewIDEDeviceFromString(value string) *IDEDevice {
+	d := &IDEDevice{}
+	options := strings.Split(value, ",")
+	for _, option := range options {
+		optionParts := strings.Split(option, "=")
+		if len(optionParts) == 2 {
+			k := optionParts[0]
+			v := optionParts[1]
+			switch k {
+			case "file":
+				d.File = String(v)
+			case "media":
+				media, _ := MediaTypeFromString(v)
+				d.Media = &media
+			case "size":
+				d.Size = String(v)
+			}
+		}
+	}
+	d.File = String(options[0])
+
+	return d
+}
+
+func (c *IDEDevice) GetQMOptionValue() string {
+	v := make([]string, 0, 1)
+	if c.File != nil {
+		v = append(v, fmt.Sprintf("%s=%s", "file", *c.File))
+	}
+	if c.Media != nil {
+		v = append(v, fmt.Sprintf("%s=%s", "media", c.Media.String()))
+	}
+	if c.Size != nil {
+		v = append(v, fmt.Sprintf("%s=%s", "size", *c.Size))
+	}
+	return strings.Join(v, ",")
+}
