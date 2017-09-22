@@ -348,7 +348,7 @@ type VMConfig struct {
 	// Create a serial device inside the VM (n is 0 to 3), and pass through a host serial device (i.e. /dev/ttyS0),
 	// or create a unix socket on the host side (use 'qm terminal' to open a terminal connection).
 	// NOTE: If you pass through a host serial device, it is no longer possible to migrate such machines - use with special care.
-	SerialDevices map[int]QMOption
+	SerialDevices map[int]*SerialDevice
 
 	//
 	// Amount of memory shares for auto-ballooning.
@@ -525,7 +525,8 @@ func NewVMConfigFromMap(data map[string]interface{}) *VMConfig {
 				config.SCSIControllerType = &v
 			}
 		case "SerialDevices":
-			log.Printf("[DEBUG] Field %s is not supported yet", fieldName)
+			number, _ := strconv.Atoi(matchResults[1])
+			config.AddSerialDevice(number, NewSerialDeviceFromString(v.(string)))
 		case "Tablet":
 			config.Tablet = Bool(intToBool(int(v.(float64))))
 		case "TDF":
@@ -617,9 +618,9 @@ func (c *VMConfig) AddSCSIDevice(number int, value QMOption) {
 	c.SCSIDevices[number] = value
 }
 
-func (c *VMConfig) AddSerialDevice(number int, value QMOption) {
+func (c *VMConfig) AddSerialDevice(number int, value *SerialDevice) {
 	if c.SerialDevices == nil {
-		c.SerialDevices = make(map[int]QMOption)
+		c.SerialDevices = make(map[int]*SerialDevice)
 	}
 	c.SerialDevices[number] = value
 }

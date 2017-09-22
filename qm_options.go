@@ -232,3 +232,16 @@ func (c *IDEDevice) GetQMOptionValue() string {
 	}
 	return strings.Join(v, ",")
 }
+
+// Serial device
+type SerialDevice struct {
+	Value  string
+}
+
+func NewSerialDeviceFromString(value string) *SerialDevice {
+	return &SerialDevice{value}
+}
+
+func (c *SerialDevice) GetQMOptionValue() string {
+	return c.Value
+}
