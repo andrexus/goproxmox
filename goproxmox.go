@@ -53,8 +53,9 @@ type Client struct {
 	Password string
 
 	// Services used for communicating with the API
-	Nodes NodesService
-	VMs   QemuService
+	Nodes    NodesService
+	VMs      QemuService
+	Storages StorageService
 
 	// Optional function called after every successful request made to the proxmox API
 	onRequestCompleted RequestCompletionCallback
@@ -97,6 +98,7 @@ func NewClient(host, username, password string) *Client {
 
 	c.Nodes = &NodesServiceOp{client: c}
 	c.VMs = &QemuServiceOp{client: c}
+	c.Storages = &StorageServiceOp{client: c}
 
 	return c
 }
@@ -142,6 +144,7 @@ func (c *Client) OnRequestCompleted(rc RequestCompletionCallback) {
 // pointed to by v, or returned as an error if an API error has occurred. If v implements the io.Writer interface,
 // the raw response will be written to v, without attempting to decode it.
 func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
+	log.Printf("[DEBUG] Request: %s\n", req)
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, err
@@ -180,7 +183,7 @@ func (c *Client) Do(req *http.Request, v interface{}) (*http.Response, error) {
 
 func (r *ErrorResponse) Error() string {
 	errors := ""
-	for  key, value := range r.Errors {
+	for key, value := range r.Errors {
 		errors += fmt.Sprintf("\t%s: %s\n", key, value)
 	}
 	return fmt.Sprintf("Respose code: %d\nErrors:\n%s", r.ResponseCode, errors)
