@@ -1,8 +1,8 @@
 package goproxmox
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 )
 
 type QemuService interface {
@@ -61,9 +61,9 @@ type VMStatus struct {
 	Name      string      `json:"name"`
 	Status    string      `json:"status"`
 	QMPstatus string      `json:"qmpstatus"`
-	PID       int         `json:"pid"`
+	PID       string      `json:"pid"`
 	Template  string      `json:"template"`
-	CPU       int         `json:"cpu"`
+	CPU       float64     `json:"cpu"`
 	CPUs      int         `json:"cpus"`
 	Memory    int         `json:"mem"`
 	MaxMemory int         `json:"maxmem"`
