@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	libraryVersion  = "0.1.5"
+	libraryVersion  = "0.1.6"
 	logLevelEnvName = "GOPROXMOX_LOGLEVEL"
 	apiBasePath     = "/api2/json/"
 	mediaType       = "application/json"
@@ -199,12 +199,22 @@ func CheckResponse(r *http.Response) error {
 
 	errorResponse := &ErrorResponse{Response: r, ResponseCode: r.StatusCode}
 	data, err := ioutil.ReadAll(r.Body)
-	log.Printf("[DEBUG] Check response: %s\n", string(data))
+	log.Printf("[DEBUG] Response status: %s\n", r.Status)
+	log.Printf("[DEBUG] Response data: %s\n", string(data))
 	if err == nil && len(data) > 0 {
 		err := json.Unmarshal(data, errorResponse)
 		if err != nil {
 			return err
 		}
+	}
+
+	matchResults := nodeDoesNotExistRegexp.FindStringSubmatch(r.Status)
+	if len(matchResults) > 1 {
+		return &NodeDoesNotExistError{matchResults[1]}
+	}
+	matchResults = vmDoesNotExistRegexp.FindStringSubmatch(r.Status)
+	if len(matchResults) > 1 {
+		return &VMDoesNotExistError{matchResults[1]}
 	}
 
 	return errorResponse
