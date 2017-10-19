@@ -1,5 +1,7 @@
 package goproxmox
 
+import "net/http"
+
 type NodesService interface {
 	GetNodes() ([]Node, error)
 }
@@ -31,7 +33,7 @@ type nodesRoot struct {
 func (s *NodesServiceOp) GetNodes() ([]Node, error) {
 	path := "nodes"
 
-	req, err := s.client.NewRequest("GET", path, nil)
+	req, err := s.client.NewRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}

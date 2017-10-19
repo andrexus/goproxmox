@@ -3,6 +3,7 @@ package goproxmox
 import (
 	"fmt"
 	"strconv"
+	"net/http"
 )
 
 type StorageService interface {
@@ -58,7 +59,7 @@ type StorageVolume struct {
 func (s *StorageServiceOp) GetStorageList(node string) ([]Storage, error) {
 	path := fmt.Sprintf("nodes/%s/storage", node)
 
-	req, err := s.client.NewRequest("GET", path, nil)
+	req, err := s.client.NewRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +76,7 @@ func (s *StorageServiceOp) GetStorageList(node string) ([]Storage, error) {
 func (s *StorageServiceOp) GetStorageVolumes(node, storageName string) ([]StorageVolume, error) {
 	path := fmt.Sprintf("nodes/%s/storage/%s/content", node, storageName)
 
-	req, err := s.client.NewRequest("GET", path, nil)
+	req, err := s.client.NewRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,7 @@ func (s *StorageServiceOp) GetStorageVolumes(node, storageName string) ([]Storag
 func (s *StorageServiceOp) GetVolume(node, storageName, volumeId string) (*StorageVolume, error) {
 	path := fmt.Sprintf("nodes/%s/storage/%s/content/%s", node, storageName, volumeId)
 
-	req, err := s.client.NewRequest("GET", path, nil)
+	req, err := s.client.NewRequest(http.MethodGet, path, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +117,7 @@ func (s *StorageServiceOp) CreateVolume(node, storageName string, vmID int, file
 		optionsMap["format"] = *format
 	}
 
-	req, err := s.client.NewRequest("POST", path, optionsMap)
+	req, err := s.client.NewRequest(http.MethodPost, path, optionsMap)
 	if err != nil {
 		return err
 	}
@@ -128,7 +129,7 @@ func (s *StorageServiceOp) CreateVolume(node, storageName string, vmID int, file
 func (s *StorageServiceOp) DeleteVolume(node, storageName, volumeId string) error {
 	path := fmt.Sprintf("nodes/%s/storage/%s/content/%s", node, storageName, volumeId)
 
-	req, err := s.client.NewRequest("DELETE", path, nil)
+	req, err := s.client.NewRequest(http.MethodDelete, path, nil)
 	if err != nil {
 		return err
 	}
